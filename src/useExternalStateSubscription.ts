@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { isState, type State, type StatePayloadMap } from "stategear";
-import { Subscribe } from "../state.ts";
-import { SetExternalStateValue } from "./types/SetExternalStateValue.ts";
+import type { Subscribe } from "../state.ts";
+import type { SetExternalStateValue } from "./types/SetExternalStateValue.ts";
 
-export function useExternalStateSubscription<T, P extends StatePayloadMap<T>, V = T>(
+export function useExternalStateSubscription<
+  T,
+  P extends StatePayloadMap<T>,
+  V = T,
+>(
   state: State<T, P> | null | undefined,
   subscribe?: Subscribe | boolean,
   getSnapshot?: () => V,

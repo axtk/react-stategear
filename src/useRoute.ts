@@ -2,8 +2,8 @@ import { useCallback, useContext, useMemo } from "react";
 import type { NavigationOptions } from "stategear";
 import { RouteContext } from "./RouteContext.ts";
 import type { RenderCallback } from "./types/RenderCallback.ts";
+import type { Subscribe } from "./types/Subscribe.ts";
 import { useExternalStateSubscription } from "./useExternalStateSubscription.ts";
-import { Subscribe } from "./types/Subscribe.ts";
 
 export function useRoute(callback?: RenderCallback<NavigationOptions>) {
   let route = useContext(RouteContext);
