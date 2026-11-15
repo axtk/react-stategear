@@ -145,10 +145,10 @@ export function App() {
 
 ### Selectors
 
-Use the `select((x) => y)` utility function combined with `useExternalState()` to pick a state value derived from `state`. The selector function `(x) => y` passed to `select()` as a parameter defines how the state value returned from `useExternalState()` is transformed.
+Pass an optional selector function as a second parameter to `useExternalState(state, selector?, equal?)` to pick a state value derived from `state`. The selector function `(x) => y` defines how the state value `x` is transformed before it's returned from the hook.
 
 ```jsx
-import { State, useExternalState, select } from "react-stategear";
+import { State, useExternalState } from "react-stategear";
 
 const appState = {
   items: new State({/* ... id: { name: string } */}),
@@ -157,8 +157,8 @@ const appState = {
 
 function ItemCard({ id }: { id: string }) {
   const [name] = useExternalState(
-    appState.items,                     // State instance
-    select((items) => items[id]?.name), // Selector
+    appState.items,             // State instance
+    (items) => items[id]?.name, // Selector
   );
 
   return <div className="item">Name: {name}</div>;
@@ -180,14 +180,14 @@ Or, alternatively, with a React Context:
 
 ```jsx
 import { createContext, useContext } from "react";
-import { State, select, useExternalState, useInitialValue } from "react-stategear";
+import { State, useExternalState, useInitialValue } from "react-stategear";
 
 const AppContext = createContext(null);
 
 function ItemCard({ id }: { id: string }) {
   const [name] = useExternalState(
-    useContext(AppContext)?.items,      // State instance
-    select((items) => items[id]?.name), // Selector
+    useContext(AppContext)?.items, // State instance
+    (items) => items[id]?.name,    // Selector
   );
 
   return <div className="item">Name: {name}</div>;
@@ -208,43 +208,11 @@ export function App() {
 }
 ```
 
-⬥ With a selector subscription to a `State` instance, the component will only be notified to re-render when the state snapshot returned from the selector changes. By default, whether there's no value change is determined as shallow equality of the previous and current snapshots. Optionally, another equality function can be set as the second parameter of `select((x) => y, equal?)`.
+⬥ With a custom selector subscription to a `State` instance, the component will only be notified to re-render when the state snapshot returned from the selector changes. By default, whether there's no value change in the selected state is determined as shallow equality of the previous and current snapshots. Optionally, a custom equality function can be passed as the third parameter of `useExternalState(state, selector?, equal?)`.
 
-⬥ The state setter returned from `useExternalState(state, selector)` alongside the selector snapshot updates the entire state regardless of the selector.
+⬥ Set the `selector` parameter to `false`, as in `useExternalState(state, false)`, to tell the hook not to subscribe the component to tracking the external state updates. A use case for it is when a component makes use of the external state value setter without using the state value itself. The `false` parameter could have been used in the `ResetButton` in the first example above, but in many cases of infrequent updates with lightweight component renders it might be unnecessary, since React automatically skips updating the DOM when there are no changes.
 
-### Custom subscription
-
-Use the optional second parameter of `useExternalState(state, subscription?)` for more fine-grained control over component's subscription to the `State` instance and re-renders:
-
-```js
-import { useMemo } from "react";
-import { State, subscribe, useExternalState } from "react-stategear";
-
-const itemState = new State({
-  /* A map of `<id>: <item>` */
-});
-
-// Renders a specific item from `itemState`
-function ItemCard({ id }) {
-  const [items, setItems] = useExternalState(
-    itemState,
-    subscribe((render) => {
-      // The subscription to the state events returns a cleanup function.
-      return itemState.on("update", ({ current, previous }) => {
-        // Assuming that the items have a `timestamp` property, re-render
-        // `ItemCard` only if the relevant item's `timestamp` has increased
-        if (current[id].timestamp > previous[id].timestamp) render();
-      });
-    }),
-  );
-
-  // ...
-}
-```
-
-⬥ Set the `subscription` parameter to `false`, as in `useExternalState(state, false)`, to tell the hook not to subscribe the component to tracking the external state updates altogether. A use case for it is when a component makes use of the external state value setter without using the state value itself. The `false` parameter could have been used in the `ResetButton` in the first example above, but in many cases of infrequent updates with lightweight component renders it might be unnecessary, since React automatically skips updating the DOM when there are no changes.
-
-⬥ `subscribe(fn, getSnapshot?)` also accepts an optional second parameter `getShapshot()`, which is a function that returns a value derived from `state`.
+⬥ The state setter returned from `useExternalState()` alongside the selector snapshot updates the entire state regardless of the selector.
 
 ### Integration with Immer
 
@@ -269,6 +237,42 @@ const counterState = new PersistentState(0, { key: "counter" });
 ⬥ Set up interaction with a custom storage by setting `{ read(), write(value)? }` as `options` in `new PersistentState(value, options)`.
 
 ⬥ `PersistentState` skips interaction with the browser storage in non-browser environments, which makes it usable with SSR. Since persistent state depends on a browser API (`localStorage` or `sessionStorage`) by default, mismatch errors while hydrating SSR content based on a persisent state should be specifically handled with React's `use(browser())` (v19.3+) or other client-side rendering detection techniques such as [`react-clientside`](https://www.npmjs.com/package/react-clientside).
+
+### Custom subscription
+
+In addition to the two common strategies of filtering state updates discussed above—splitting the application state into multiple `State` instances and using selectors—there is another one.
+
+Use the `useExternalStateSubscription(state, subscribe?, getSnapshot?)` hook for fine-grained control over component's subscription to the `State` instance and its re-renders:
+
+```js
+import { useMemo } from "react";
+import { State, subscribe, useExternalState } from "react-stategear";
+
+const itemState = new State({
+  /* A map of `<id>: <item>` */
+});
+
+// Renders a specific item from `itemState`
+function ItemCard({ id }) {
+  const [items, setItems] = useExternalStateSubscription(
+    itemState,
+    (render) => {
+      // The subscription to the state events returns a cleanup function.
+      return itemState.on("update", ({ current, previous }) => {
+        // Assuming that the items have a `timestamp` property, re-render
+        // `ItemCard` only if the relevant item's `timestamp` has increased
+        if (current[id].timestamp > previous[id].timestamp) render();
+      });
+    },
+  );
+
+  // ...
+}
+```
+
+⬥ Set the `subscribe` parameter to `false`, as in `useExternalStateSubscription(state, false)`, to tell the hook not to subscribe the component to tracking the external state updates altogether.
+
+⬥ Pass a `getSnapshot()` function as the hook's optional third parameter to transform the state value returned from the hook. By default, the hook returns the entire state value.
 
 ## useRoute
 

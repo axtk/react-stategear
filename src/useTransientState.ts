@@ -2,10 +2,8 @@ import { useCallback, useContext, useMemo, useRef, useState } from "react";
 import { isState, State } from "stategear";
 import { TransientStateContext } from "./TransientStateContext.ts";
 import type { TransientState } from "./types/TransientState.ts";
-import {
-  type SetExternalStateValue,
-  useExternalState,
-} from "./useExternalState.ts";
+import { useExternalState } from "./useExternalState.ts";
+import { SetExternalStateValue } from "./types/SetExternalStateValue.ts";
 
 function createState(
   initial = true,
