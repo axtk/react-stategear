@@ -2,21 +2,21 @@
 
 This library explores an approach to shared state management and routing in React apps that seeks to extend common React patterns to these topics in order to produce concise and familiar code.
 
+Under the hood, routing is a special case of shared state management, too, with the shared state being the URL. So all of this library's core parts listed below fall under the broad category of state management.
+
 Core parts:
 
-- Shared state management: [useExternalState](#useexternalstate)
-- Routing: [useRoute](#useroute) · [useNavigationStart / useNavigationComplete](#usenavigationstart--usenavigationcomplete) · [useRouteState](#useroutestate) · [Type-safe routes](#type-safe-routes)
-- Async state management: [useTransientState](#usetransientstate)
-
-Under the hood, routing is a special case of shared state management, too, with the shared state being the URL. So all these core parts fall under the broad category of state management, with `useExternalState()` being the general-purpose React hook for arbitrary state management (which is also the basis of the library's other hooks).
+- **[Shared state management](#shared-state)**: [Without context](#sharing-state-without-context) · [With Context](#sharing-state-via-context) · [Selectors](#selectors) · [Optional integration with Immer](#optional-integration-with-immer) · [Custom subscription](#custom-subscription) · [Persistence across page reloads](#persistence-across-page-reloads)
+- **[Routing](#routing)**: [URL-based rendering](#url-based-rendering) · [SPA navigation and link components](#spa-navigation-and-link-components) · [Routing middleware](#routing-middleware) · [URL as state](#url-as-state) · [Type-safe routes](#type-safe-routes) · [Nested routes](#nested-routes)
+- **[Async state management](#async-state)**: [Shared and local](#shared-and-local-async-action-state) · [Silent](#silent-pending-state) · [Delayed](#delayed-pending-state) · [Initialized and scoped with Provider](#action-state-provider)
 
 \+ [Annotated live demos](#annotated-live-demos) · [Internals](#internals) · [Motivation and comparison](https://axtk.github.io/posts/react-stategear_backstory)
 
-## useExternalState
+## Shared state
 
-This hook is focused on simplicity of both setting up shared state from scratch and migrating from local state. The equally common latter scenario is often missed out with commonly used approaches resulting in sizable code rewrites.
+This library's approach is focused on simplicity of both setting up shared state from scratch and migrating from local state. The equally common latter scenario is often missed out with commonly used approaches resulting in sizable code rewrites.
 
-### Shared state
+## Sharing state without Context
 
 Move local state to the full-fledged shared state with minimal paradigm shift and minimal code changes:
 
@@ -54,13 +54,13 @@ Move local state to the full-fledged shared state with minimal paradigm shift an
 
 &#x2BC8; [Live demo: Shared state without Context](https://codesandbox.io/p/sandbox/gxkn85?file=%252Fsrc%252FApp.tsx)
 
-The shared state instance `new State(initialValue)` can contain data of any type, primitive or nonprimitive.
+⬥ The shared state instance `new State(initialValue)` can contain data of any type, primitive or nonprimitive.
 
-With TypeScript, the value type of a `State` instance is inferred from the initial value, or it can be explicitly specified with a generic type as `new State<T>(value)`.
+⬥ With TypeScript, the value type of a `State` instance is inferred from the initial value, or it can be explicitly specified with a generic type as `new State<T>(value)`.
 
 ### Sharing state via Context
 
-With SSR, it's common practice to put shared values into React Context rather than module-level variables to avoid cross-request data sharing. The same applies to external state. Provide external state to multiple components via React Context like any data in a React app:
+With SSR, it's common practice to put shared values into React Context rather than module-level variables to avoid cross-request data leaks. The same applies to external state. Provide external state to multiple components via React Context like any other data in a React app:
 
 ```diff
 + import { createContext, useContext } from "react";
@@ -214,33 +214,15 @@ export function App() {
 
 ⬥ The state setter returned from `useExternalState()` alongside the selector snapshot updates the entire state regardless of the selector.
 
-### Integration with Immer
+### Optional integration with Immer
 
 The same way as with `useState()`, Immer can be optionally used with state setters returned from `useExternalState()` to facilitate deeply nested data changes.
 
 &#x2BC8; [Live demo: Shared state with Immer](https://codesandbox.io/p/sandbox/gv4rgw?file=%252Fsrc%252FApp.tsx)
 
-### Persistence across page reloads
-
-Replace `State` with `PersistentState` as shown below to get the state data synced to the specified `key` in `localStorage` and restored on page reload. After a persistent state is created, use it with `useExternalState(state)` the same way as `State` instances.
-
-```js
-import { PersistentState } from "react-stategear";
-
-const counterState = new PersistentState(0, { key: "counter" });
-```
-
-⬥ Set `options.session` to `true` in `new PersistentState(value, options)` to use `sessionStorage`.
-
-⬥ Set `options.serialize()` and `options.deserialize()` to override the default data transform behavior, including filtering and rearranging the data (it's `JSON.stringify()` and `JSON.parse()` by default).
-
-⬥ Set up interaction with a custom storage by setting `{ read(), write(value)? }` as `options` in `new PersistentState(value, options)`.
-
-⬥ `PersistentState` skips interaction with the browser storage in non-browser environments, which makes it usable with SSR. Since persistent state depends on a browser API (`localStorage` or `sessionStorage`) by default, mismatch errors while hydrating SSR content based on a persisent state should be specifically handled with React's `use(browser())` (v19.3+) or other client-side rendering detection techniques such as [`react-clientside`](https://www.npmjs.com/package/react-clientside).
-
 ### Custom subscription
 
-In addition to the two common strategies of filtering state updates discussed above—splitting the application state into multiple `State` instances and using selectors—there is another one.
+In addition to the two common strategies of filtering state updates discussed above—splitting the application state into multiple `State` instances and using selectors with `useExternalState()`—there is another one.
 
 Use the `useExternalStateSubscription(state, subscribe?, getSnapshot?)` hook for fine-grained control over component's subscription to the `State` instance and its re-renders:
 
@@ -274,13 +256,31 @@ function ItemCard({ id }) {
 
 ⬥ Pass a `getSnapshot()` function as the hook's optional third parameter to transform the state value returned from the hook. By default, the hook returns the entire state value.
 
-## useRoute
+### Persistence across page reloads
 
-Use this hook for URL-based rendering and SPA navigation. Under the hood, this boils down to accessing and changing the shared URL state.
+Replace `State` with `PersistentState` as shown below to get the state data synced to the specified `key` in `localStorage` and restored on page reload. After a persistent state is created, use it with `useExternalState(state)` the same way as `State` instances.
+
+```js
+import { PersistentState } from "react-stategear";
+
+const counterState = new PersistentState(0, { key: "counter" });
+```
+
+⬥ Set `options.session` to `true` in `new PersistentState(value, options)` to use `sessionStorage`.
+
+⬥ Set `options.serialize()` and `options.deserialize()` to override the default data transform behavior, including filtering and rearranging the data (it's `JSON.stringify()` and `JSON.parse()` by default).
+
+⬥ Set up interaction with a custom storage by setting `{ read(), write(value)? }` as `options` in `new PersistentState(value, options)`.
+
+⬥ `PersistentState` skips interaction with the browser storage in non-browser environments, which makes it usable with SSR. Since persistent state depends on a browser API (`localStorage` or `sessionStorage`) by default, mismatch errors while hydrating SSR content based on a persisent state should be specifically handled with React's `use(browser())` (v19.3+) or other client-side rendering detection techniques such as [`react-clientside`](https://www.npmjs.com/package/react-clientside).
+
+## Routing
+
+Under the hood, URL-based rendering and SPA navigation boil down to accessing and changing the shared URL state. For this reason, routing is part of the state library, too.
 
 ### URL-based rendering
 
-URL-based rendering with `at(url, x, y?)` shown below works similarly to conditional rendering with the ternary operator `atURL ? x : y`. It's equally applicable to props and components:
+URL-based rendering with `at(url, x, y?)` shown below works similarly to conditional rendering with the ternary operator `atURL ? x : y`. It's equally applicable to prop values and components:
 
 ```jsx
 import { useRoute } from "react-stategear";
@@ -308,9 +308,7 @@ function App() {
 
 ⬥ See also the [Type-safe routes](#type-safe-routes) section. &#x2BC8; [Live demo: Type-safe URL-based rendering](https://codesandbox.io/p/sandbox/tltq5r?file=%252Fsrc%252FApp.tsx)
 
-⬥ Routing with `react-stategear` is based on the core idea behind all approaches to route-based rendering: conditional rendering based on the URL. Unlike component-, config-, or file-based approaches, the `react-stategear`'s imperative approach sticks to this core idea without additional abstraction layers and specific relations between routes (like layout nesting or parameter inheritance) offering full explicit control over route-based rendering.
-
-### SPA navigation
+### SPA navigation and link components
 
 The shape of the SPA navigation API is largely aligned with the similar built-in browser APIs (while still being compatible with SSR):
 
@@ -363,11 +361,11 @@ Using props compatible with HTML link attributes makes link components easily in
 
 ⬥ Link components also automatically receive the `data-active="true"` prop whenever their `href` prop matches the current URL, which can be used for additional styling.
 
-⬥ Use the optional `callback` parameter of `useRoute(callback?)` for more fine-grained control over the component rendering in response to URL changes. This callback receives the `render` function as a parameter that should be called at some point. Use cases for this render callback include, for example, activating animated view transitions (&#x2BC8; [Live demo: View transitions](https://codesandbox.io/p/sandbox/w4q95n?file=%252Fsrc%252FApp.tsx)) or (less likely in regular circumstances) skipping re-renders for certain URL changes.
+⬥ The optional `callback` parameter of `useRoute(callback?)` allows for more fine-grained control over the component rendering in response to URL changes. This callback receives the `render` function as a parameter that should be called at some point. Use cases for this render callback include, for example, activating animated view transitions (&#x2BC8; [Live demo: View transitions](https://codesandbox.io/p/sandbox/w4q95n?file=%252Fsrc%252FApp.tsx)) or (less likely in regular circumstances) skipping re-renders for certain URL changes.
 
-## useNavigationStart / useNavigationComplete
+### Routing middleware
 
-These hooks set up optional actions to be done before and after a SPA navigation occurs respectively. Such intermediate actions are also known as routing middleware.
+`useNavigationStart()` and `useNavigationComplete()` set up optional intermediate actions, also known as routing middleware, that have to be done before and after a SPA navigation occurs.
 
 Some common examples of what can be handled with the routing middleware include redirecting to another URL, preventing navigation with unsaved user input, setting the page title based on the current URL:
 
@@ -407,9 +405,9 @@ function App() {
 
 ⬥ The callback of both hooks is first called when the component gets mounted if the route is already in the navigation-complete state.
 
-## useRouteState
+### URL as state
 
-When it's necessary to put a portion of the app's state to the URL, use this hook to manage URL parameters as state in a `useState`-like manner. Use the React's state mental model and migrate from local state without major code rewrites:
+When it's necessary to put a portion of the app's state to the URL, use the `useRouteState()` hook to manage URL parameters as state in a `useState`-like manner. Use the React's state mental model and migrate from local state without major code rewrites:
 
 ```diff
 + import { useRouteState } from "react-stategear";
@@ -446,7 +444,7 @@ When it's necessary to put a portion of the app's state to the URL, use this hoo
 
 ⬥ See also the [Type-safe routes](#type-safe-routes) section. &#x2BC8; [Live demo: Type-safe URL parameters as state](https://codesandbox.io/p/sandbox/6ck4qz?file=%252Fsrc%252FShapeSection.tsx)
 
-## Type-safe routes
+### Type-safe routes
 
 When it comes to accessing parameters extracted from a URL pattern, by default the parameters are typed as `Record<string, string | undefined>`, which quite literally represents a map containing portions of a string URL.
 
@@ -539,9 +537,9 @@ export const url = createURLBuilder({
 
 &#x2BC8; [Live demo: Type-safe nested routes](https://codesandbox.io/p/sandbox/pv9rgh?file=%252Fsrc%252FApp.tsx)
 
-## useTransientState
+## Async state
 
-Use this hook to track an async action's state, whether it's pending, successfully completed, or failed, without affecting the application's data management.
+Use the `useTransientState()` hook to track an asynchronous action's state, whether it's pending, successfully completed, or failed, without affecting the application's data management.
 
 In the example below, storing and rendering the essential app data (`items`) and the happy path scenario remain unaffected. The loading and error state handling works like a decoupled scaffolding to the main scenario. (`items` are stored in local state here, but any other state used by the app can be there instead.)
 
