@@ -2,13 +2,13 @@
 
 This library explores an approach to shared state management and routing in React apps that seeks to extend common React patterns to these topics in order to produce concise and familiar code.
 
-Under the hood, routing is a special case of shared state management, too, with the shared state being the URL. So all of this library's core parts listed below fall under the broad category of state management.
+Under the hood, routing is a special case of shared state management, too, with the shared state being the URL. So all of the library's core parts listed below fall under the broad category of state management and share much of their internal mechanics.
 
 Core parts:
 
-- **[Shared state management](#shared-state)**: [Without context](#sharing-state-without-context) · [With Context](#sharing-state-via-context) · [Selectors](#selectors) · [Optional integration with Immer](#optional-integration-with-immer) · [Custom subscription](#custom-subscription) · [Persistence across page reloads](#persistence-across-page-reloads)
-- **[Routing](#routing)**: [URL-based rendering](#url-based-rendering) · [SPA navigation and link components](#spa-navigation-and-link-components) · [Routing middleware](#routing-middleware) · [URL as state](#url-as-state) · [Type-safe routes](#type-safe-routes) · [Nested routes](#nested-routes)
-- **[Async state management](#async-state)**: [Shared and local](#shared-and-local-async-action-state) · [Silent](#silent-pending-state) · [Delayed](#delayed-pending-state) · [Initialized and scoped with Provider](#action-state-provider)
+- **[Shared state management](#shared-state)**:<br> [Without Context](#sharing-state-without-context) · [With Context](#sharing-state-via-context) · [Selectors](#selectors) · [Optional integration with Immer](#optional-integration-with-immer) · [Custom subscription](#custom-subscription) · [Persistence across page reloads](#persistence-across-page-reloads)
+- **[Routing](#routing)**:<br> [URL-based rendering](#url-based-rendering) · [SPA navigation and link components](#spa-navigation-and-link-components) · [Routing middleware](#routing-middleware) · [URL as state](#url-as-state) · [Type-safe routes](#type-safe-routes) · [Nested routes](#nested-routes)
+- **[Async state management](#async-state)**:<br> [Shared and local async action state](#shared-and-local-async-action-state) · [Silent pending state](#silent-pending-state) · [Delayed pending state](#delayed-pending-state) · [Initializing and scoping with Provider](#action-state-provider)
 
 \+ [Annotated live demos](#annotated-live-demos) · [Internals](#internals) · [Motivation and comparison](https://axtk.github.io/posts/react-stategear_backstory)
 
